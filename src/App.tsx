@@ -43,6 +43,7 @@ export default function App() {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [customQuizzes, setCustomQuizzes] = useState<Quiz[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isAITutorOpen, setIsAITutorOpen] = useState(false);
   
   // Profile State
@@ -114,6 +115,7 @@ export default function App() {
     if (!selectedChapter || !selectedSubject) return;
     
     setIsGenerating(true);
+    setErrorMsg(null);
     try {
       const chapterObj = CHAPTERS.find(c => c.id === selectedChapter);
       const subjectObj = SUBJECTS.find(s => s.id === selectedSubject);
@@ -135,8 +137,9 @@ export default function App() {
 
       setCustomQuizzes(prev => [...prev, newQuiz]);
       setActiveQuiz(newQuiz);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to generate questions:", error);
+      setErrorMsg(error.message || "Gagal menjana soalan.");
     } finally {
       setIsGenerating(false);
     }
@@ -384,7 +387,12 @@ export default function App() {
               </div>
 
               <div className="grid gap-4">
-                {filteredQuizzes.length > 0 ? (
+                  {errorMsg && (
+                    <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
+                      {errorMsg}
+                    </div>
+                  )}
+                  {filteredQuizzes.length > 0 ? (
                   <>
                     {filteredQuizzes.map(quiz => (
                       <motion.div
@@ -468,3 +476,4 @@ export default function App() {
     </div>
   );
 }
+''
