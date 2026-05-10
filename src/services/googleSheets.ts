@@ -1,16 +1,5 @@
-export const getSheetApiUrl = () => {
-  return localStorage.getItem('googleSheetWebAppUrl') || '';
-};
-
-export const setSheetApiUrl = (url: string) => {
-  localStorage.setItem('googleSheetWebAppUrl', url.trim());
-};
-
 export const sendSheetAction = async (action: string, payload: Record<string, any>) => {
-  const urlStr = getSheetApiUrl();
-  if (!urlStr) {
-    throw new Error('Sila tetapkan URL Google Sheets Web App di bahagian tetapan Admin.');
-  }
+  const urlStr = 'https://script.google.com/macros/s/AKfycbxsaAFP1Y6EAkV8Tle1DocgA8dhrkdNPZ-Aq16LmRmQBCBX_-y24H0CyRuUW3-8xqOLfw/exec';
 
   const formData = new FormData();
   formData.append('action', action);
@@ -27,6 +16,6 @@ export const sendSheetAction = async (action: string, payload: Record<string, an
     return await response.json();
   } catch (error: any) {
     console.error('Error connecting to Google Sheets:', error);
-    throw new Error('Gagal menyambung ke pelayan Google Sheets. Sila pastikan URL anda adalah betul (script.google.com/macros/s/.../exec) dan anda mempunyai akses internet.');
+    throw new Error('Gagal menyambung ke pelayan Google Sheets.');
   }
 };
