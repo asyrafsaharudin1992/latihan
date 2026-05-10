@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "points": { "type": "integer" },
+        "streak": { "type": "integer" },
+        "lastActive": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Learning subject",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "A quiz for a specific topic in a subject",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswer": { "type": "integer" },
+              "explanation": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["id", "subjectId", "title"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Tracking user quiz completion",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "quizId": { "type": "string" },
+        "score": { "type": "integer" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "quizId", "score"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "subjects": {
+      "schema": "Subject",
+      "description": "School subjects"
+    },
+    "quizzes": {
+      "schema": "Quiz",
+      "description": "Question banks"
+    },
+    "progress": {
+      "schema": "Progress",
+      "description": "User completion records"
+    }
+  }
+}
