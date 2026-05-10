@@ -102,15 +102,6 @@ export function LoginModal({ onLogin, isAdminMode }: LoginModalProps) {
             {errorMsg && (
               <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
                 {errorMsg}
-                {errorMsg.includes('URL') && (
-                  <button 
-                    type="button" 
-                    onClick={isAdminMode}
-                    className="ml-2 underline font-bold"
-                  >
-                    Buka Tetapan Admin
-                  </button>
-                )}
               </div>
             )}
 
