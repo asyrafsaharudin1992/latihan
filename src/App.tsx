@@ -9,7 +9,7 @@ import Mascot from "./components/Mascot";
 import SubjectGrid from "./components/SubjectGrid";
 import QuizSection from "./components/QuizSection";
 import AITutorDialog from "./components/AITutorDialog";
-import { SUBJECTS, QUIZZES, CHAPTERS } from "./data/mockData";
+import { SUBJECTS, CHAPTERS } from "./data/mockData";
 import { type Quiz, type Chapter } from "./types";
 import { generateChapterQuestions } from "./services/aiGenerator";
 import { Button } from "./components/ui/button";
@@ -18,7 +18,11 @@ import { Input } from "./components/ui/input";
 import { Loader2, Sparkles, Trophy, BookOpen, MessageCircle, ChevronLeft, Plus, Search, CheckCircle } from "lucide-react";
 import { LoginModal, type UserData } from "./components/LoginModal";
 import { AdminPanel } from "./components/AdminPanel";
-import { sendSheetAction } from "./services/googleSheets";
+import {
+  sendSheetAction,
+  getQuestionsForTopic,
+  saveQuestionsForTopic,
+} from "./services/googleSheets";
 
 // Hook untuk Debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -43,6 +47,7 @@ export default function App() {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [customQuizzes, setCustomQuizzes] = useState<Quiz[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isAITutorOpen, setIsAITutorOpen] = useState(false);
   
@@ -104,44 +109,83 @@ export default function App() {
            (c.topics && c.topics.toLowerCase().includes(debouncedSearch.toLowerCase()));
   });
 
-  const allQuizzes = [...QUIZZES, ...customQuizzes];
+  const allQuizzes = customQuizzes;
   const filteredQuizzes = allQuizzes.filter(q => q.chapterId === selectedChapter);
 
   const startQuiz = (quiz: Quiz) => {
     setActiveQuiz(quiz);
   };
 
+  /**
+   * Cache-first load: check Google Sheet first, only call AI if topic has never
+   * been generated. After AI generation, persist the bank to the sheet so future
+   * visits skip the AI call entirely.
+   */
   const handleGenerateAIQuestions = async () => {
     if (!selectedChapter || !selectedSubject) return;
-    
+
     setIsGenerating(true);
     setErrorMsg(null);
+    setGenerationStatus("Memuatkan soalan...");
+
     try {
-      const chapterObj = CHAPTERS.find(c => c.id === selectedChapter);
-      const subjectObj = SUBJECTS.find(s => s.id === selectedSubject);
-      
-      const newQuestions = await generateChapterQuestions(
-        subjectObj?.name || selectedSubject,
+      const chapterObj = CHAPTERS.find((c) => c.id === selectedChapter);
+      const subjectObj = SUBJECTS.find((s) => s.id === selectedSubject);
+
+      const subjectName = subjectObj?.name || selectedSubject;
+      const topicName = chapterObj?.name || selectedChapter;
+
+      // --- Step 1: try the sheet cache ---
+      setGenerationStatus("Menyemak bank soalan tersimpan...");
+      let questions = await getQuestionsForTopic(
         selectedYear,
-        chapterObj?.name || selectedChapter,
-        chapterObj?.topics || "",
-        10
+        subjectName,
+        topicName
       );
 
+      // --- Step 2: cache miss -> generate via AI then persist ---
+      if (questions.length === 0) {
+        setGenerationStatus(
+          "Soalan baru. AI sedang menjana 30 soalan (sekali sahaja untuk bab ini)..."
+        );
+        questions = await generateChapterQuestions(
+          subjectName,
+          selectedYear,
+          topicName,
+          chapterObj?.topics || ""
+        );
+
+        // Persist for future visits — don't fail the whole flow if save fails
+        setGenerationStatus("Menyimpan ke bank soalan...");
+        const saved = await saveQuestionsForTopic(questions, {
+          year: selectedYear,
+          subject: subjectName,
+          topic: topicName,
+        });
+        if (!saved) {
+          console.warn(
+            "Failed to save question bank to sheet. User can still play this round, but it won't be cached."
+          );
+        }
+      } else {
+        setGenerationStatus("Bank soalan dimuat dari simpanan.");
+      }
+
       const newQuiz: Quiz = {
-        id: `ai-${Date.now()}`,
+        id: `bank-${selectedChapter}-${Date.now()}`,
         chapterId: selectedChapter,
-        title: `Latihan AI: ${chapterObj?.name || "Latihan Ekstra"}`,
-        questions: newQuestions
+        title: `Latihan: ${chapterObj?.name || "Latihan Bab"}`,
+        questions,
       };
 
-      setCustomQuizzes(prev => [...prev, newQuiz]);
+      setCustomQuizzes((prev) => [...prev, newQuiz]);
       setActiveQuiz(newQuiz);
     } catch (error: any) {
-      console.error("Failed to generate questions:", error);
+      console.error("Failed to load/generate questions:", error);
       setErrorMsg(error.message || "Gagal menjana soalan.");
     } finally {
       setIsGenerating(false);
+      setGenerationStatus("");
     }
   };
 
@@ -419,8 +463,14 @@ export default function App() {
                       ) : (
                         <Plus className="h-6 w-6 text-primary" />
                       )}
-                      <span className="font-bold text-center">Jana Latihan AI (20 Objektif, 10 Padanan)</span>
-                      <p className="text-xs text-slate-400 font-normal text-center">Kawan AI akan membina soalan khas untuk bab ini</p>
+                      <span className="font-bold text-center">
+                        {isGenerating ? "Sila tunggu..." : "Mula Latihan Bab Ini (30 Soalan)"}
+                      </span>
+                      <p className="text-xs text-slate-400 font-normal text-center">
+                        {isGenerating
+                          ? generationStatus || "Memproses..."
+                          : "20 Objektif + 10 Padanan. Soalan disimpan di Google Sheet."}
+                      </p>
                     </Button>
                   </>
                 ) : (
@@ -442,8 +492,11 @@ export default function App() {
                       ) : (
                         <Sparkles className="h-5 w-5" />
                       )}
-                      {isGenerating ? "Sedang Menjana..." : "Jana AI (20 Objektif, 10 Padanan)"}
+                      {isGenerating ? "Sila tunggu..." : "Mula Latihan Bab Ini (30 Soalan)"}
                     </Button>
+                    {isGenerating && generationStatus && (
+                      <p className="text-xs text-slate-500 mt-3 italic">{generationStatus}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -476,4 +529,3 @@ export default function App() {
     </div>
   );
 }
-''
