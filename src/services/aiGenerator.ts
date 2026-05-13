@@ -1,7 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || "" });
+// Supports both AI Studio's process.env and Vercel's import.meta.env
+const apiKey = (typeof process !== 'undefined' && process.env.GEMINI_API_KEY) 
+  ? process.env.GEMINI_API_KEY 
+  : import.meta.env.VITE_GEMINI_API_KEY || "";
+
+const ai = new GoogleGenAI({ apiKey });
 
 // Sleep helper for retry backoff
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -37,8 +42,8 @@ CRITICAL RULES:
 1. ONLY generate questions directly found in the JAIS SRA/SRI Selangor curriculum for "${subject}" Tahun ${year}.
 2. Focus specifically on the chapter: "${chapter}" and its related topics: "${topics}".
 3. Language/Script:
-   - For Bahasa Arab: Use ONLY ARABIC script with full harakat (baris). Question, Options, Pairs, and Explanation must be in Arabic.
-   - For Tauhid, Sirah, Fiqh, Akhlak, and Jawi: EVERYTHING MUST be in JAWI script.
+   - For Bahasa Arab (Arabic subject): Use ONLY ARABIC LANGUAGE with full harakat (baris). Question, Options, Pairs, and Explanation must be in Arabic.
+   - For all other subjects (Tauhid, Sirah, Fiqh, Akhlak, Jawi, etc.): YOU MUST write in Bahasa Melayu but strictly using the JAWI SCRIPT (Tulisan Jawi / حروف جاوي). DO NOT use Rumi (Latin alphabets). All Questions, Options, Pairs, and Explanations MUST be in Jawi. Example of Jawi: برايمان كڤد رسول.
 4. Difficulty: Must be age-appropriate for Tahun ${year} students.
 5. Format:
    - Objective: Provide 4 distinct options and a correctAnswer index (0-3).
