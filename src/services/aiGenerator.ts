@@ -25,6 +25,8 @@ export async function generateChapterQuestions(
   chapter: string,
   topics: string = ""
 ): Promise<Question[]> {
+const isArabic = subject.toLowerCase().includes('arab');
+
   const prompt = `You are a Malaysian JAIS (Jabatan Agama Islam Selangor) SRA/SRI Curriculum Developer.
 Task: Generate an educational quiz for primary school children (Tahun ${year}) based on the official JAIS syllabus.
 
@@ -41,9 +43,17 @@ Book Details:
 CRITICAL RULES:
 1. ONLY generate questions directly found in the JAIS SRA/SRI Selangor curriculum for "${subject}" Tahun ${year}.
 2. Focus specifically on the chapter: "${chapter}" and its related topics: "${topics}".
-3. Language/Script:
-   - For Bahasa Arab (Arabic subject): Use ONLY ARABIC LANGUAGE with full harakat (baris). Question, Options, Pairs, and Explanation must be in Arabic.
-   - For all other subjects (Tauhid, Sirah, Fiqh, Akhlak, Jawi, etc.): YOU MUST write in Bahasa Melayu but strictly using the JAWI SCRIPT (Tulisan Jawi / حروف جاوي). DO NOT use Rumi (Latin alphabets). All Questions, Options, Pairs, and Explanations MUST be in Jawi. Example of Jawi: برايمان كڤد رسول.
+3. Language/Script rules (CRITICAL):
+   - Is this subject Arabic (Bahasa Arab)? ${isArabic ? 'YES' : 'NO'}
+   ${isArabic ? `
+   - ARABIC SUBJECT RULE: Use ONLY the Arabic Language with full harakat (baris) for everything.
+   ` : `
+   - NON-ARABIC SUBJECT RULE: You MUST write ONLY in Bahasa Melayu using the JAWI SCRIPT (حروف جاوي). 
+   - DO NOT write in the Arabic Language.
+   - DO NOT write in Rumi (Latin alphabets).
+   - Words should be Malay words spelled in Jawi, e.g. "اڤاكه" for Apakah, "يڠ مانكه" for Yang manakah.
+   - ALL Questions, Options, Pairs, and Explanations MUST be perfectly spelled in Bahasa Melayu Jawi.
+   `}
 4. Difficulty: Must be age-appropriate for Tahun ${year} students.
 5. Format:
    - Objective: Provide 4 distinct options and a correctAnswer index (0-3).
